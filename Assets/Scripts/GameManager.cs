@@ -8,22 +8,33 @@ public class GameManager : MonoBehaviour
 {
     //[SerializeField]
     public GameObject ball1, ball2, ball3, ball4, ball5, ball6;      /// 1 = Purp, 2 = Blue, 3 = Red, 4 = Yell, 5 = Pink, 6 = Grey
-    public GameObject rowPanel, mainPanel;
+    public GameObject mainPanel, rowPanel, shooterPanel;
 
-    public List<GameObject> rowPanelList = new List<GameObject>();
-    public List<RowBalls> rowBalls = new List<RowBalls>(); 
 
+    private List<GameObject> rowPanelList = new List<GameObject>();
+    private List<RowBalls> rowBalls = new List<RowBalls>(); 
+    private List<int> Ylist = new List<int>();
     Random random = new Random();
-    public int Y = -60, X = -480;
-    public int firstSize = 7;
-    public int ballSize = 9;
+    private int Y = -60, X, tempX, tempY;
+    private int panelCount;
+    private int firstPanelCount;
+    private int ballCount;
+    private int mainPanelWidth;
+    private int mainPanelHeight;
 
     void Start()
     {
         try
         {
             rowPanel.transform.localPosition = new Vector3(0, Y, 0);
-            ///InvokeRepeating("DownRow", 1.5f, 1.5f);
+            RectTransform mainPanelTransform = mainPanel.GetComponent<RectTransform>();
+            mainPanelWidth = (int)mainPanelTransform.rect.width;
+            mainPanelHeight = (int)mainPanelTransform.rect.height;
+            ballCount = mainPanelWidth / 120;
+            panelCount = mainPanelHeight / 120;
+            firstPanelCount = (panelCount / 2);
+            
+            CreateRows();
             MainRows();
             
         }
@@ -36,29 +47,52 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        if (Input.GetMouseButtonDown(0))
+        {
+            Debug.Log("Sol fare tiklandi");
+        }
+        if (Input.GetAxis("Mouse ScrollWheel") != 0f)
+        {
+            Debug.Log("Fare roulette çevrildi");
+        }
 
+        float mouseX = Input.GetAxis("Mouse X");
+        float mouseY = Input.GetAxis("Mouse Y");
+        if (mouseX != 0f || mouseY != 0f)
+        {
+            Debug.Log("Fare hareket etti, X: " + mouseX + " Y: " + mouseY);
+        }
     }
 
-    /*void ReduceRowPanelPosition()
+    void CreateRows()
     {
-        rowPanel1.transform.localPosition = new Vector3(rowPanel1.transform.localPosition.x, rowPanel1.transform.localPosition.y - 120, rowPanel1.transform.localPosition.z);
-        
-    }*/
+        for (int i = 0; i < panelCount; i++)
+        {
+            GameObject rowPanelInstance = Instantiate(rowPanel);            /// rowPanel prefabi kopyalaniyor.
+            RectTransform rowPanelRectTransform = rowPanelInstance.GetComponent<RectTransform>();
+            rowPanelInstance.name = "RowPanel" + i.ToString();
+            rowPanelInstance.transform.SetParent(mainPanel.transform);      /// Her satırin konumlandirilmasi yapiliyor.
+            rowPanelInstance.transform.localPosition = new Vector3(0, Y, 0);
+            rowPanelInstance.transform.localScale = new Vector3(1, 1, 1);
+            rowPanelRectTransform.offsetMin = new Vector2(0, rowPanelRectTransform.offsetMin.y);
+            rowPanelRectTransform.offsetMax = new Vector2(0, rowPanelRectTransform.offsetMax.y);
+            rowPanelList.Add(rowPanelInstance);                             /// Her satir rowPanelList'esine ekleniyor.
+            Ylist.Add(Y);
+            Y -= 120;
+        }
+    }
 
     void MainRows()
     {
         try
         {
-            for (int i = 0; i < firstSize; i++)
+            for (int i = 0; i < firstPanelCount; i++)
             {
                 List<int> rowBallsIndexes = new List<int>();                    /// Satirdaki toplarin indekslerini tutan liste.
-                GameObject rowPanelInstance = Instantiate(rowPanel);            /// rowPanel prefabi kopyalaniyor.
-                rowPanelInstance.transform.SetParent(mainPanel.transform);      /// Her satırin konumlandirilmasi yapiliyor.
-                rowBallsIndexes = AddBallsFull(rowPanelInstance);               /// Her satira toplar ekleniyor ve indeksleri geri donduruluyor.
-                rowBalls.Add(new RowBalls(rowPanelInstance, rowBallsIndexes));  /// Her satirin satir bilgileri rowBalls listesine ekleniyor.
-                DownRow(rowPanelInstance);
-                rowPanelList.Add(rowPanelInstance);                             /// Her satir rowPanelList'esine ekleniyor.    
-                X = -480;
+                AddBallsFull(rowPanelList[i], rowBallsIndexes, i);
+                rowBalls.Add(new RowBalls(rowPanelList[i], rowBallsIndexes));
+                rowBalls[i].X = tempX;
+                rowBalls[i].Y = Ylist[i];
             }
         }
         catch(Exception ex)
@@ -73,13 +107,26 @@ public class GameManager : MonoBehaviour
 
     }
 
-    List<int> AddBallsFull(GameObject row)
+    void AddBallsFull(GameObject row, List<int> rowBallsIndexes, int index)
     {
-        List<int> rowBallsIndexes = new List<int>();
         try
         {
+            int tempBallCount = ballCount;
+
             GameObject ballInstance = null;
-            for (int i = 0; i < ballSize; i++)
+            if(index % 2 == 0)
+            {
+                ballCount = (mainPanelWidth / 120);
+                X = -(mainPanelWidth / 2 - 60);     // -480
+                tempX = X;
+            }
+            else
+            {
+                ballCount = (mainPanelWidth / 120) -1;
+                X = -(mainPanelWidth / 2 - 120) ;     // -420
+                tempX = X;
+            }
+            for (int i = 0; i < ballCount; i++)
             {
                 AddBalls(row, ballInstance, random.Next(0, 6), rowBallsIndexes);
                 X += 120;
@@ -89,7 +136,6 @@ public class GameManager : MonoBehaviour
         {
             Debug.LogException(ex);
         }
-        return rowBallsIndexes;
     }
 
     void AddBalls(GameObject row, GameObject ballInstance, int randomNumber, List<int> rowBallsIndexes)
@@ -149,7 +195,8 @@ public class GameManager : MonoBehaviour
 
     }
 
-    void DownRow(GameObject rowPanel)
+    
+    /*void DownRow(GameObject rowPanel)
     {
         try
         {
@@ -164,5 +211,5 @@ public class GameManager : MonoBehaviour
         {
             Debug.LogException(ex);
         }
-    }
+    }*/
 }
